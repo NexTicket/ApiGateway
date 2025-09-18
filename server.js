@@ -85,7 +85,7 @@ class APIGateway {
 
         // Request ID middleware for tracking
         this.app.use((req, res, next) => {
-            req.requestId = Math.random().toString(36).substr(2, 9);
+            req.requestId = Math.random().toString(36).slice(2, 11);
             res.setHeader('X-Request-ID', req.requestId);
             next();
         });
