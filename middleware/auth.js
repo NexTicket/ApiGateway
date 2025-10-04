@@ -46,17 +46,14 @@ class AuthMiddleware {
 
             // Verify token with Firebase
             const decodedToken = await firebaseConfig.verifyIdToken(token);
-            
-            // Get additional user info
-            const userRecord = await firebaseConfig.getUserByUid(decodedToken.uid);
 
-            // Attach user info to request object
+            // Attach user info to request object using token data only
             req.user = {
                 uid: decodedToken.uid,
-                email: decodedToken.email || userRecord.email,
-                emailVerified: decodedToken.email_verified || userRecord.emailVerified,
-                name: decodedToken.name || userRecord.displayName,
-                picture: decodedToken.picture || userRecord.photoURL,
+                email: decodedToken.email,
+                emailVerified: decodedToken.email_verified,
+                name: decodedToken.name,
+                picture: decodedToken.picture,
                 roles: decodedToken.roles || [], // Custom claims for roles
                 customClaims: decodedToken, // Full custom claims
                 firebase: {
@@ -166,13 +163,12 @@ class AuthMiddleware {
             
             if (token) {
                 const decodedToken = await firebaseConfig.verifyIdToken(token);
-                const userRecord = await firebaseConfig.getUserByUid(decodedToken.uid);
 
                 req.user = {
                     uid: decodedToken.uid,
-                    email: decodedToken.email || userRecord.email,
-                    emailVerified: decodedToken.email_verified || userRecord.emailVerified,
-                    name: decodedToken.name || userRecord.displayName,
+                    email: decodedToken.email,
+                    emailVerified: decodedToken.email_verified,
+                    name: decodedToken.name,
                     roles: decodedToken.roles || [],
                     customClaims: decodedToken
                 };
