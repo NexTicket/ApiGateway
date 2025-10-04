@@ -68,18 +68,36 @@ class ProxyConfig {
                 proxyReq.setHeader('X-Gateway-Service', serviceName);
                 proxyReq.setHeader('X-Gateway-Timestamp', Date.now().toString());
 
-                console.log(`Proxying ${req.method} ${req.url} to ${serviceConfig.target}`);
+                console.log(`[PROXY] Proxying ${req.method} ${req.originalUrl || req.url} to ${serviceConfig.target}${proxyReq.path}`);
+                console.log(`[PROXY] Target: ${serviceConfig.target}, Path: ${proxyReq.path}`);
             },
 
             // Handle proxy errors
             onError: (err, req, res) => {
                 console.error(`Proxy error for ${serviceName}:`, err.message);
+                console.error(`Error code: ${err.code}, Error details:`, err);
                 
                 if (!res.headersSent) {
-                    res.status(502).json({
-                        error: 'Bad Gateway',
-                        message: `Service ${serviceName} is currently unavailable`,
+                    let statusCode = 502;
+                    let errorMessage = `Service ${serviceName} is currently unavailable`;
+                    
+                    // Differentiate error types for better handling
+                    if (err.code === 'ECONNREFUSED') {
+                        errorMessage = `Service ${serviceName} connection refused - service may be down`;
+                    } else if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
+                        statusCode = 504;
+                        errorMessage = `Service ${serviceName} request timed out`;
+                    } else if (err.code === 'ENOTFOUND') {
+                        errorMessage = `Service ${serviceName} host not found`;
+                    } else if (err.code === 'ECONNRESET') {
+                        errorMessage = `Service ${serviceName} connection was reset`;
+                    }
+                    
+                    res.status(statusCode).json({
+                        error: statusCode === 504 ? 'Gateway Timeout' : 'Bad Gateway',
+                        message: errorMessage,
                         service: serviceName,
+                        errorCode: err.code,
                         timestamp: new Date().toISOString()
                     });
                 }
