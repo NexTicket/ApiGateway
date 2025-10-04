@@ -115,5 +115,3 @@ pids
 
 # Firebase service account key
 .firebase-service-account.json
-
-/tests
