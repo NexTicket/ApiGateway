@@ -1,7 +1,7 @@
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
 /**
- * Proxy configuration for different backend services
+ * Simple proxy configuration for different backend services
  * Maps route prefixes to backend service URLs
  */
 class ProxyConfig {
@@ -11,32 +11,28 @@ class ProxyConfig {
             notification: {
                 target: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5001',
                 pathRewrite: { '^/notifi_service': '' },
-                changeOrigin: true,
                 requireAuth: true
             },
             event: {
                 target: process.env.EVENT_SERVICE_URL || 'http://localhost:4000',
                 pathRewrite: { '^/event_service': '' },
-                changeOrigin: true,
                 requireAuth: true
             },
             ticket: {
                 target: process.env.TICKET_SERVICE_URL || 'http://localhost:8000',
                 pathRewrite: { '^/ticket_service': '' },
-                changeOrigin: true,
                 requireAuth: true
             },
             public: {
                 target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:5003',
                 pathRewrite: { '^/public': '' },
-                changeOrigin: true,
                 requireAuth: false
             }
         };
     }
 
     /**
-     * Create proxy middleware for a specific service
+     * Create simple proxy middleware for a specific service
      * @param {string} serviceName - Name of the service
      * @returns {Function} Proxy middleware
      */
@@ -49,88 +45,54 @@ class ProxyConfig {
 
         const proxyOptions = {
             target: serviceConfig.target,
-            changeOrigin: serviceConfig.changeOrigin,
+            changeOrigin: true,
             pathRewrite: serviceConfig.pathRewrite,
             
-            // Custom headers to add service info
+            // Simple request handler that forwards all headers and body
             onProxyReq: (proxyReq, req, res) => {
-                // Add original host header
-                proxyReq.setHeader('X-Forwarded-Host', req.get('Host'));
+                // Simply pass all headers from the original request
+                Object.keys(req.headers).forEach(header => {
+                    proxyReq.setHeader(header, req.headers[header]);
+                });
                 
-                // Add user information if authenticated
+                // Add user information as headers if user is authenticated
                 if (req.user) {
                     proxyReq.setHeader('X-User-ID', req.user.uid);
                     proxyReq.setHeader('X-User-Email', req.user.email || '');
-                    proxyReq.setHeader('X-User-Roles', JSON.stringify(req.user.roles || []));
                 }
                 
-                // Add service identifier
-                proxyReq.setHeader('X-Gateway-Service', serviceName);
-                proxyReq.setHeader('X-Gateway-Timestamp', Date.now().toString());
-
-                console.log(`[PROXY] Proxying ${req.method} ${req.originalUrl || req.url} to ${serviceConfig.target}${proxyReq.path}`);
-                console.log(`[PROXY] Target: ${serviceConfig.target}, Path: ${proxyReq.path}`);
+                // Simple logging
+                console.log(`Forwarding ${req.method} ${req.originalUrl} to ${serviceConfig.target}`);
+                
+                // For POST/PUT requests, make sure to forward the body correctly
+                if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+                    const bodyData = JSON.stringify(req.body);
+                    proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                    // Write the body to the proxied request
+                    proxyReq.write(bodyData);
+                }
             },
 
-            // Handle proxy errors
+            // Simple error handling
             onError: (err, req, res) => {
-                console.error(`Proxy error for ${serviceName}:`, err.message);
-                console.error(`Error code: ${err.code}, Error details:`, err);
+                console.error(`Service ${serviceName} error:`, err.message);
                 
                 if (!res.headersSent) {
-                    let statusCode = 502;
-                    let errorMessage = `Service ${serviceName} is currently unavailable`;
-                    
-                    // Differentiate error types for better handling
-                    if (err.code === 'ECONNREFUSED') {
-                        errorMessage = `Service ${serviceName} connection refused - service may be down`;
-                    } else if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
-                        statusCode = 504;
-                        errorMessage = `Service ${serviceName} request timed out`;
-                    } else if (err.code === 'ENOTFOUND') {
-                        errorMessage = `Service ${serviceName} host not found`;
-                    } else if (err.code === 'ECONNRESET') {
-                        errorMessage = `Service ${serviceName} connection was reset`;
-                    }
-                    
-                    res.status(statusCode).json({
-                        error: statusCode === 504 ? 'Gateway Timeout' : 'Bad Gateway',
-                        message: errorMessage,
-                        service: serviceName,
-                        errorCode: err.code,
-                        timestamp: new Date().toISOString()
+                    res.status(502).json({
+                        error: 'Service Unavailable',
+                        message: `Service ${serviceName} is currently unavailable`,
+                        service: serviceName
                     });
                 }
             },
 
-            // Handle proxy response
+            // Add CORS headers to response
             onProxyRes: (proxyRes, req, res) => {
-                // Add CORS headers if needed
                 proxyRes.headers['Access-Control-Allow-Origin'] = '*';
                 proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
                 proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
                 
-                // Add service identification header
-                proxyRes.headers['X-Proxied-By'] = 'NexTicket-API-Gateway';
-                proxyRes.headers['X-Service'] = serviceName;
-
                 console.log(`Response from ${serviceName}: ${proxyRes.statusCode}`);
-            },
-
-            // Timeout configuration
-            timeout: parseInt(process.env.PROXY_TIMEOUT) || 30000, // 30 seconds default
-            proxyTimeout: parseInt(process.env.PROXY_TIMEOUT) || 30000,
-
-            // Security: Don't forward certain headers
-            ignorePath: false,
-            secure: process.env.NODE_ENV === 'production',
-            
-            // Health check bypass
-            bypass: (req, res) => {
-                // Allow health checks to bypass proxy
-                if (req.path === '/health' || req.path === '/ping') {
-                    return '/health';
-                }
             }
         };
 
@@ -165,8 +127,7 @@ class ProxyConfig {
     }
 
     /**
-     * Health check for all services
-     * @returns {Promise<Object>} Health status of all services
+     * Simple health check for services
      */
     async checkServicesHealth() {
         const healthStatus = {};
@@ -181,14 +142,12 @@ class ProxyConfig {
                 
                 healthStatus[serviceName] = {
                     status: response.ok ? 'healthy' : 'unhealthy',
-                    url: config.target,
-                    responseTime: response.headers.get('response-time') || 'unknown'
+                    url: config.target
                 };
             } catch (error) {
                 healthStatus[serviceName] = {
                     status: 'unreachable',
-                    url: config.target,
-                    error: error.message
+                    url: config.target
                 };
             }
         }

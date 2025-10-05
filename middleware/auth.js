@@ -1,14 +1,11 @@
 import firebaseConfig from '../config/firebase.js';
 
 /**
- * Middleware to verify Firebase JWT tokens
- * Extracts token from Authorization header, verifies it, and attaches user info to req.user
+ * Simplified middleware to verify Firebase JWT tokens
  */
 class AuthMiddleware {
     /**
      * Extract token from Authorization header
-     * @param {Object} req - Express request object
-     * @returns {string|null} - Extracted token or null
      */
     static extractToken(req) {
         const authHeader = req.headers.authorization;
@@ -27,10 +24,7 @@ class AuthMiddleware {
     }
 
     /**
-     * Middleware function to verify Firebase JWT token
-     * @param {Object} req - Express request object
-     * @param {Object} res - Express response object
-     * @param {Function} next - Express next function
+     * Middleware function to verify Firebase JWT token - simplified
      */
     static async verifyToken(req, res, next) {
         try {
@@ -40,85 +34,46 @@ class AuthMiddleware {
             if (!token) {
                 return res.status(401).json({
                     error: 'Unauthorized',
-                    message: 'No token provided. Please include Authorization: Bearer <token> header.'
+                    message: 'No token provided'
                 });
             }
 
             // Verify token with Firebase
             const decodedToken = await firebaseConfig.verifyIdToken(token);
 
-            // Attach user info to request object using token data only
+            // Set minimal user info - just what's needed
             req.user = {
                 uid: decodedToken.uid,
                 email: decodedToken.email,
-                emailVerified: decodedToken.email_verified,
-                name: decodedToken.name,
-                picture: decodedToken.picture,
-                roles: decodedToken.roles || [], // Custom claims for roles
-                customClaims: decodedToken, // Full custom claims
-                firebase: {
-                    identities: decodedToken.firebase?.identities || {},
-                    sign_in_provider: decodedToken.firebase?.sign_in_provider || 'unknown'
-                },
-                auth_time: decodedToken.auth_time,
-                exp: decodedToken.exp,
-                iat: decodedToken.iat
+                roles: decodedToken.roles || [] // Keep roles for access control
             };
 
-            // Log successful authentication (optional, remove in production)
-            console.log(`Authenticated user: ${req.user.email} (${req.user.uid})`);
-
+            console.log(`Auth successful: ${req.user.email}`);
             next();
 
         } catch (error) {
-            console.error('Token verification failed:', error.message);
-            
-            // Determine error type for appropriate response
-            if (error.message.includes('expired')) {
-                return res.status(401).json({
-                    error: 'Token Expired',
-                    message: 'The provided token has expired. Please authenticate again.'
-                });
-            }
-            
-            if (error.message.includes('invalid')) {
-                return res.status(401).json({
-                    error: 'Invalid Token',
-                    message: 'The provided token is invalid or malformed.'
-                });
-            }
-
+            console.error('Auth failed:', error.message);
             return res.status(401).json({
                 error: 'Authentication Failed',
-                message: 'Token verification failed. Please check your token and try again.'
+                message: error.message
             });
         }
     }
 
     /**
-     * Optional middleware to check for specific roles
-     * @param {string|string[]} requiredRoles - Required role(s)
-     * @returns {Function} Express middleware function
+     * Simple role check middleware
      */
     static requireRoles(requiredRoles) {
         const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
         
         return (req, res, next) => {
             if (!req.user) {
-                return res.status(401).json({
-                    error: 'Unauthorized',
-                    message: 'Authentication required'
-                });
+                return res.status(401).json({ error: 'Authentication required' });
             }
 
-            const userRoles = req.user.roles || [];
-            const hasRequiredRole = roles.some(role => userRoles.includes(role));
-
-            if (!hasRequiredRole) {
-                return res.status(403).json({
-                    error: 'Forbidden',
-                    message: `Access denied. Required roles: ${roles.join(', ')}`
-                });
+            const hasRole = roles.some(role => (req.user.roles || []).includes(role));
+            if (!hasRole) {
+                return res.status(403).json({ error: 'Access denied' });
             }
 
             next();
@@ -126,36 +81,22 @@ class AuthMiddleware {
     }
 
     /**
-     * Optional middleware for admin-only access
-     * @param {Object} req - Express request object
-     * @param {Object} res - Express response object
-     * @param {Function} next - Express next function
+     * Simple admin check
      */
     static requireAdmin(req, res, next) {
         if (!req.user) {
-            return res.status(401).json({
-                error: 'Unauthorized',
-                message: 'Authentication required'
-            });
+            return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userRoles = req.user.roles || [];
-        if (!userRoles.includes('admin')) {
-            return res.status(403).json({
-                error: 'Forbidden',
-                message: 'Admin access required'
-            });
+        if (!(req.user.roles || []).includes('admin')) {
+            return res.status(403).json({ error: 'Admin access required' });
         }
 
         next();
     }
 
     /**
-     * Middleware for optional authentication (doesn't fail if no token)
-     * Useful for routes that can work with or without authentication
-     * @param {Object} req - Express request object
-     * @param {Object} res - Express response object
-     * @param {Function} next - Express next function
+     * Optional auth - doesn't require authentication
      */
     static async optionalAuth(req, res, next) {
         try {
@@ -163,21 +104,15 @@ class AuthMiddleware {
             
             if (token) {
                 const decodedToken = await firebaseConfig.verifyIdToken(token);
-
                 req.user = {
                     uid: decodedToken.uid,
                     email: decodedToken.email,
-                    emailVerified: decodedToken.email_verified,
-                    name: decodedToken.name,
-                    roles: decodedToken.roles || [],
-                    customClaims: decodedToken
+                    roles: decodedToken.roles || []
                 };
             }
-
             next();
         } catch (error) {
-            // For optional auth, we continue even if token verification fails
-            console.log('Optional auth failed, continuing without user:', error.message);
+            // Continue without user info if auth fails
             next();
         }
     }
