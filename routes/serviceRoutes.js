@@ -35,4 +35,10 @@ router.use('/ticket_service',
     proxyConfig.createServiceProxy('ticket')
 );
 
+router.use('/user_service',
+    AuthMiddleware.verifyToken,
+    requestLogger,
+    proxyConfig.createServiceProxy('user')
+);
+
 export default router;

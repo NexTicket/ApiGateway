@@ -31,6 +31,10 @@ class ApiController {
                     target: services.ticket.target,
                     authentication: 'required'
                 },
+                '/user_service/*': {
+                    target: services.user.target,
+                    authentication: 'required'
+                },
                 '/public/*': {
                     target: services.public.target,
                     authentication: 'none'
@@ -68,7 +72,8 @@ class ApiController {
                 '/public/*',
                 '/notifi_service/*',
                 '/event_service/*',
-                '/ticket_service/*'
+                '/ticket_service/*',
+                '/user_service/*'
             ],
             timestamp: new Date().toISOString()
         });
