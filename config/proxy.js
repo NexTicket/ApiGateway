@@ -23,6 +23,11 @@ class ProxyConfig {
                 pathRewrite: { '^/ticket_service': '' },
                 requireAuth: true
             },
+            user: {
+                target: process.env.USER_SERVICE_URL || 'http://localhost:4001',
+                pathRewrite: { '^/user_service': '' },
+                requireAuth: true
+            },
             public: {
                 target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:5003',
                 pathRewrite: { '^/public': '' },
