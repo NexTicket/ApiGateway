@@ -1,27 +1,42 @@
-# Dockerfile for your expressjs-apigateway
+# Dockerfile for NexTicket API Gateway (Express.js)
 
-# ---- Stage 1: Build ----
-# This stage installs dependencies
-FROM node:18-alpine AS builder
+# ---- Stage 1: Dependencies ----
+FROM node:18-alpine AS deps
 WORKDIR /app
 
-# Copy package.json and package-lock.json first to leverage Docker's layer caching
+# Copy package files
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm install --production
-
-# Copy the rest of the application source code
-COPY . .
+# Install dependencies
+RUN npm ci
 
 # ---- Stage 2: Production ----
-# This stage creates the final, lean image
-FROM node:18-alpine
+FROM node:18-alpine AS runner
 WORKDIR /app
 
-# Copy dependencies and source code from the 'builder' stage
-COPY --from=builder /app .
+# Set to production
+ENV NODE_ENV=production
 
-# The command to start the application
-# IMPORTANT: Change "server.js" if your entry file is named something else (e.g., index.js)
-CMD [ "node", "server.js" ]
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy application source
+COPY . .
+
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# Expose the port
+EXPOSE 5050
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:5050/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start the application
+CMD ["node", "server.js"]
