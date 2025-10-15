@@ -64,10 +64,21 @@ class ProxyConfig {
                 if (req.user) {
                     proxyReq.setHeader('X-User-ID', req.user.uid);
                     proxyReq.setHeader('X-User-Email', req.user.email || '');
+                    // Forward role information - check both singular and array formats
+                    let userRole = req.user.role;
+                    if (!userRole && Array.isArray(req.user.roles) && req.user.roles.length > 0) {
+                        userRole = req.user.roles[0];
+                    }
+                    if (userRole) {
+                        proxyReq.setHeader('X-User-Role', userRole);
+                    }
                 }
                 
                 // Simple logging
                 console.log(`Forwarding ${req.method} ${req.originalUrl} to ${serviceConfig.target}`);
+                if (req.user) {
+                    console.log(`User authenticated: ${req.user.email} (role: ${req.user.role || req.user.roles})`);
+                }
                 
                 // For POST/PUT requests, make sure to forward the body correctly
                 if ((req.method === 'POST' || req.method === 'PUT') && req.body) {

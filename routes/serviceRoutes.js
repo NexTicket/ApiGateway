@@ -13,8 +13,13 @@ const requestLogger = (req, res, next) => {
     next();
 };
 
-// Public routes (no authentication required)
-router.use('/public', requestLogger, proxyConfig.createServiceProxy('public'));
+// Public routes (optional authentication - sends user info if token is present)
+// This allows public access while also enabling authenticated users to get role-based content
+router.use('/public', 
+    AuthMiddleware.optionalAuth,
+    requestLogger, 
+    proxyConfig.createServiceProxy('public')
+);
 
 // Protected routes (authentication required)
 router.use('/notifi_service', 
