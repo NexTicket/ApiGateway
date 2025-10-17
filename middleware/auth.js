@@ -101,12 +101,17 @@ class AuthMiddleware {
     static async optionalAuth(req, res, next) {
         try {
             const token = AuthMiddleware.extractToken(req);
-            
             if (token) {
                 const decodedToken = await firebaseConfig.verifyIdToken(token);
+                // Extract both role and roles
+                let userRole = decodedToken.role;
+                if (!userRole && Array.isArray(decodedToken.roles) && decodedToken.roles.length > 0) {
+                    userRole = decodedToken.roles[0];
+                }
                 req.user = {
                     uid: decodedToken.uid,
                     email: decodedToken.email,
+                    role: userRole || '',
                     roles: decodedToken.roles || []
                 };
             }

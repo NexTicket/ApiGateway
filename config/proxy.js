@@ -29,7 +29,7 @@ class ProxyConfig {
                 requireAuth: true
             },
             public: {
-                target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:5003',
+                target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:4000',
                 pathRewrite: { '^/public': '' },
                 requireAuth: false
             }
@@ -55,22 +55,32 @@ class ProxyConfig {
             
             // Simple request handler that forwards all headers and body
             onProxyReq: (proxyReq, req, res) => {
-                // Simply pass all headers from the original request
-                Object.keys(req.headers).forEach(header => {
-                    proxyReq.setHeader(header, req.headers[header]);
-                });
-                
                 // Add user information as headers if user is authenticated
                 if (req.user) {
                     proxyReq.setHeader('X-User-ID', req.user.uid);
                     proxyReq.setHeader('X-User-Email', req.user.email || '');
+                    // Forward role information - check both singular and array formats
+                    let userRole = req.user.role;
+                    if (!userRole && Array.isArray(req.user.roles) && req.user.roles.length > 0) {
+                        userRole = req.user.roles[0];
+                    }
+                    if (userRole) {
+                        proxyReq.setHeader('X-User-Role', userRole);
+                    }
                 }
                 
                 // Simple logging
                 console.log(`Forwarding ${req.method} ${req.originalUrl} to ${serviceConfig.target}`);
+                if (req.user) {
+                    console.log(`User authenticated: ${req.user.email} (role: ${req.user.role || req.user.roles})`);
+                }
                 
-                // For POST/PUT requests, make sure to forward the body correctly
-                if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+                // For POST/PUT requests with JSON body, forward the body
+                // But SKIP body handling for multipart/form-data (file uploads)
+                const contentType = req.headers['content-type'] || '';
+                if ((req.method === 'POST' || req.method === 'PUT') && 
+                    req.body && 
+                    !contentType.includes('multipart/form-data')) {
                     const bodyData = JSON.stringify(req.body);
                     proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
                     // Write the body to the proxied request

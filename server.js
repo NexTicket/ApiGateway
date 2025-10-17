@@ -55,9 +55,27 @@ class APIGateway {
             next();
         });
 
-        // Body parsing
-        this.app.use(express.json({ limit: '50mb' }));
-        this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+        // Body parsing - but skip multipart/form-data (file uploads)
+        this.app.use((req, res, next) => {
+            const contentType = req.headers['content-type'] || '';
+            if (contentType.includes('multipart/form-data')) {
+                console.log('🔄 Skipping body parsing for multipart request (file upload)');
+                return next();
+            }
+            
+            // Apply JSON parser for non-multipart requests
+            express.json({ limit: '50mb' })(req, res, next);
+        });
+        
+        this.app.use((req, res, next) => {
+            const contentType = req.headers['content-type'] || '';
+            if (contentType.includes('multipart/form-data')) {
+                return next();
+            }
+            
+            // Apply URL-encoded parser for non-multipart requests
+            express.urlencoded({ extended: true, limit: '50mb' })(req, res, next);
+        });
     }
 
     /**
