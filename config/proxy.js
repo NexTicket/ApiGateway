@@ -29,7 +29,7 @@ class ProxyConfig {
                 requireAuth: true
             },
             public: {
-                target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:5003',
+                target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:4000',
                 pathRewrite: { '^/public': '' },
                 requireAuth: false
             }

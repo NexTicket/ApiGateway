@@ -129,8 +129,25 @@ describe('API Gateway to Ticket Service Integration', () => {
       console.log('🔒 Testing comprehensive seat locking through API Gateway...');
 
       const payload = {
-        seat_ids: ["A1", "A2", "A3"],
-        event_id: 1
+        seat_ids: [
+          {
+            "section": "General",
+            "row_id": 9,
+            "col_id": 11
+          },
+          {
+            "section": "General", 
+            "row_id": 9,
+            "col_id": 1
+          },
+          {
+            "section": "General",
+            "row_id": 9,
+            "col_id": 2
+          }
+        ],
+        event_id: 1,
+        bulk_ticket_id: 3
       };
 
       try {
@@ -249,7 +266,33 @@ describe('API Gateway to Ticket Service Integration', () => {
 
       const payload = {
         event_id: 1,
-        seat_ids: ["A1", "A2", "A3", "A4", "A5"]
+        seat_ids: [
+          {
+            "section": "General",
+            "row_id": 6,
+            "col_id": 9
+          },
+          {
+            "section": "General",
+            "row_id": 4,
+            "col_id": 9
+          },
+          {
+            "section": "General",
+            "row_id": 0,
+            "col_id": 9
+          },
+          {
+            "section": "General",
+            "row_id": 1,
+            "col_id": 5
+          },
+          {
+            "section": "General",
+            "row_id": 4,
+            "col_id": 6
+          }
+        ]
       };
 
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -516,8 +559,30 @@ describe('API Gateway to Ticket Service Integration', () => {
       console.log('🔐 Final Test: Locking 4 seats for persistence through API Gateway...');
 
       const payload = {
-        seat_ids: ["B1", "B2", "B3", "B4"],
-        event_id: 1
+        seat_ids: [
+          {
+            "section": "General",
+            "row_id": 8,
+            "col_id": 1
+          },
+          {
+            "section": "General",
+            "row_id": 8,
+            "col_id": 2
+          },
+          {
+            "section": "General",
+            "row_id": 8,
+            "col_id": 3
+          },
+          {
+            "section": "General",
+            "row_id": 8,
+            "col_id": 4
+          }
+        ],
+        event_id: 1,
+        bulk_ticket_id: 3
       };
 
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -544,7 +609,7 @@ describe('API Gateway to Ticket Service Integration', () => {
           
           console.log('✅ Final seats locked successfully through API Gateway!');
           console.log(`   Cart ID: ${response.body.cart_id}`);
-          console.log(`   Seats: ${payload.seat_ids}`);
+          console.log(`   Seats: ${JSON.stringify(payload.seat_ids)}`);
           const expiresIn = response.body.expires_in_seconds;
           console.log(`   Expires in: ${expiresIn} seconds (${Math.floor(expiresIn/60)}m ${expiresIn%60}s)`);
           console.log(`   Expires at: ${response.body.expires_at}`);
