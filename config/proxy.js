@@ -55,11 +55,6 @@ class ProxyConfig {
             
             // Simple request handler that forwards all headers and body
             onProxyReq: (proxyReq, req, res) => {
-                // Simply pass all headers from the original request
-                Object.keys(req.headers).forEach(header => {
-                    proxyReq.setHeader(header, req.headers[header]);
-                });
-                
                 // Add user information as headers if user is authenticated
                 if (req.user) {
                     proxyReq.setHeader('X-User-ID', req.user.uid);
@@ -80,8 +75,12 @@ class ProxyConfig {
                     console.log(`User authenticated: ${req.user.email} (role: ${req.user.role || req.user.roles})`);
                 }
                 
-                // For POST/PUT requests, make sure to forward the body correctly
-                if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+                // For POST/PUT requests with JSON body, forward the body
+                // But SKIP body handling for multipart/form-data (file uploads)
+                const contentType = req.headers['content-type'] || '';
+                if ((req.method === 'POST' || req.method === 'PUT') && 
+                    req.body && 
+                    !contentType.includes('multipart/form-data')) {
                     const bodyData = JSON.stringify(req.body);
                     proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
                     // Write the body to the proxied request
