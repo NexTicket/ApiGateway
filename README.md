@@ -107,15 +107,18 @@ PROXY_TIMEOUT=30000
 | `GET` | `/health` | Health check endpoint |
 | `GET` | `/health/services` | Backend services health status |
 | `GET` | `/api/info` | API documentation |
-| `ALL` | `/public/*` | Public service endpoints |
+| `ALL` | `/public/*` | Public service endpoints (optional auth) |
+| `ALL` | `/event_service/public/*` | Public event endpoints (browse events, search) |
+| `POST` | `/ticket_service/api/webhooks/*` | Webhook endpoints (Stripe, PayPal, etc.) |
 
 ### Protected Routes (Authentication Required)
 
 | Service | Route Pattern | Target | Description |
 |---------|---------------|--------|-------------|
 | Notifications | `/notifi_service/*` | `:5000` | Notification management |
-| Events | `/event_service/*` | `:4000` | Event management |
-| Tickets | `/ticket_service/*` | `:8000` | Ticket operations |
+| Events | `/event_service/*` | `:4000` | Event management (authenticated) |
+| Tickets | `/ticket_service/*` | `:8000` | Ticket operations (authenticated) |
+| Users | `/user_service/*` | `:4001` | User management |
 | Auth Test | `/auth/test` | Internal | Authentication verification |
 
 ## 🔐 Authentication
@@ -309,7 +312,36 @@ npm test       # Run tests (placeholder)
    }
    ```
 
-3. **Add route in `routes/serviceRoutes.js`**
+3. **Add route in `routes/serviceRoutes.js`:**
+   ```javascript
+   // For protected routes
+   router.use('/new_service',
+       AuthMiddleware.verifyToken,
+       requestLogger,
+       proxyConfig.createServiceProxy('newService')
+   );
+
+   // For public routes (add BEFORE protected routes)
+   router.use('/new_service/public',
+       requestLogger,
+       proxyConfig.createServiceProxy('newService')
+   );
+   ```
+
+### Public Route Configuration
+
+**Important:** Public routes must be defined **before** their protected counterparts to ensure proper matching.
+
+**Example - Event Service:**
+```javascript
+// Public routes FIRST (more specific)
+router.use('/event_service/public', requestLogger, proxy);
+
+// Protected routes AFTER (less specific)
+router.use('/event_service', AuthMiddleware.verifyToken, proxy);
+```
+
+See [PUBLIC_ROUTES.md](PUBLIC_ROUTES.md) and [ROUTING_ARCHITECTURE.md](ROUTING_ARCHITECTURE.md) for detailed documentation.
 
 ## � Troubleshooting
 

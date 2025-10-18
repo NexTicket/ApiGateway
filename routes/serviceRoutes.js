@@ -21,6 +21,20 @@ router.use('/public',
     proxyConfig.createServiceProxy('public')
 );
 
+// Public event service routes (no authentication required)
+// Add specific public endpoints for event service
+router.use('/event_service/public',
+    requestLogger,
+    proxyConfig.createServiceProxy('event_public') 
+);
+
+// Public ticket service routes (no authentication required)
+// Stripe webhooks and other public endpoints
+router.use('/ticket_service/public',
+    requestLogger,
+    proxyConfig.createServiceProxy('ticket_public')  
+);
+
 // Protected routes (authentication required)
 router.use('/notifi_service', 
     AuthMiddleware.verifyToken,
