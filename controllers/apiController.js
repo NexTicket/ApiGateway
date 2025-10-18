@@ -27,9 +27,21 @@ class ApiController {
                     target: services.event.target,
                     authentication: 'required'
                 },
+                '/event_service/public/*': {
+                    target: services.event.target,
+                    authentication: 'none',
+                    description: 'Public event endpoints (no auth required)',
+                    pathRewrite: '^/event_service/public'
+                },
                 '/ticket_service/*': {
                     target: services.ticket.target,
                     authentication: 'required'
+                },
+                '/ticket_service/public/*': {
+                    target: services.ticket.target,
+                    authentication: 'none',
+                    description: 'Public ticket endpoints (no auth required)',
+                    pathRewrite: '^/ticket_service/public'
                 },
                 '/user_service/*': {
                     target: services.user.target,
@@ -70,6 +82,8 @@ class ApiController {
                 '/api/info',
                 '/auth/test',
                 '/public/*',
+                '/event_service/public/* (no auth)',
+                '/ticket_service/api/webhooks/* (no auth)',
                 '/notifi_service/*',
                 '/event_service/*',
                 '/ticket_service/*',

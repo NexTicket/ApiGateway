@@ -23,13 +23,23 @@ class ProxyConfig {
                 pathRewrite: { '^/ticket_service': '' },
                 requireAuth: true
             },
+            ticket_public: { 
+                target: process.env.TICKET_SERVICE_URL || 'http://localhost:8000',
+                pathRewrite: { '^/ticket_service/public': '' }, 
+                requireAuth: false
+            },
+            event_public: {  
+                target: process.env.EVENT_SERVICE_URL || 'http://localhost:4000',
+                pathRewrite: { '^/event_service/public': '' }, 
+                requireAuth: false
+            },
             user: {
                 target: process.env.USER_SERVICE_URL || 'http://localhost:4001',
                 pathRewrite: { '^/user_service': '' },
                 requireAuth: true
             },
             public: {
-                target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:4000',
+                target: process.env.PUBLIC_SERVICE_URL || 'http://localhost:3200',
                 pathRewrite: { '^/public': '' },
                 requireAuth: false
             }
