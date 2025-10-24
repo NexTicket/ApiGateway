@@ -40,15 +40,17 @@ class AuthMiddleware {
 
             // Verify token with Firebase
             const decodedToken = await firebaseConfig.verifyIdToken(token);
+            console.log('Decoded Token:', decodedToken);
 
             // Set minimal user info - just what's needed
+            // Firebase custom claims use 'role' (singular), not 'roles' (plural)
             req.user = {
                 uid: decodedToken.uid,
                 email: decodedToken.email,
-                roles: decodedToken.roles || [] // Keep roles for access control
+                role: decodedToken.role || decodedToken.roles?.[0] || 'customer' // Check both formats
             };
 
-            console.log(`Auth successful: ${req.user.email}`);
+            console.log(`Auth successful: ${req.user.email} (${req.user.role})`);
             next();
 
         } catch (error) {
@@ -71,7 +73,8 @@ class AuthMiddleware {
                 return res.status(401).json({ error: 'Authentication required' });
             }
 
-            const hasRole = roles.some(role => (req.user.roles || []).includes(role));
+            // Check if user has the required role (singular)
+            const hasRole = roles.includes(req.user.role);
             if (!hasRole) {
                 return res.status(403).json({ error: 'Access denied' });
             }
@@ -88,7 +91,7 @@ class AuthMiddleware {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        if (!(req.user.roles || []).includes('admin')) {
+        if (req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
         }
 
@@ -103,16 +106,11 @@ class AuthMiddleware {
             const token = AuthMiddleware.extractToken(req);
             if (token) {
                 const decodedToken = await firebaseConfig.verifyIdToken(token);
-                // Extract both role and roles
-                let userRole = decodedToken.role;
-                if (!userRole && Array.isArray(decodedToken.roles) && decodedToken.roles.length > 0) {
-                    userRole = decodedToken.roles[0];
-                }
+                // Firebase custom claims use 'role' (singular)
                 req.user = {
                     uid: decodedToken.uid,
                     email: decodedToken.email,
-                    role: userRole || '',
-                    roles: decodedToken.roles || []
+                    role: decodedToken.role || decodedToken.roles?.[0] || 'customer'
                 };
             }
             next();
